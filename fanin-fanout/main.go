@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"sync"
 )
 
 // genNums generates a channel and passes in all natural numbers between
@@ -52,22 +51,24 @@ func fanIn(workers []chan int) chan int {
 	outputChannel := make(chan int)
 
 	// `outputChannel` has to be closed as soon as the workers don't yield any values anymore.
-	// We'll use a waitgroup to keep track of when that happens.
-	wg := sync.WaitGroup{}
-	wg.Add(len(workers))
+	// We'll use a channel to keep track of when that happens.
+	workerDone := make(chan string)
 
 	for _, worker := range workers {
 		go func(worker chan int) {
-			defer wg.Done()
 			for value := range worker {
 				// pass values from current worker into `outputChannel``
 				outputChannel <- value
 			}
+			workerDone <- "done"
 		}(worker)
 	}
 
 	go func() {
-		wg.Wait()
+		for i := 0; i < len(workers); i++ {
+			<-workerDone
+		}
+		close(workerDone)    // close waitGroup as soon as all workers signal they're done
 		close(outputChannel) // close outputChannel as soon as all workers are finished
 	}()
 
