@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 )
 
 // genNums generates a channel and passes in all natural numbers between
@@ -32,13 +33,14 @@ func fanOut(inputChannel chan int, numWorkers int, action func(int) int) (worker
 	for i := 0; i < numWorkers; i++ {
 		worker := make(chan int)
 
-		go func() {
+		go func(i int) {
 			for inputValue := range inputChannel {
+				// log.Printf("worker %d acting on value %d", i+1, inputValue)
 				// read values from `inputChannel` and perform `action` on it
 				worker <- action(inputValue)
 			}
 			close(worker) // close worker-channel as soon as inputChannel is closed
-		}()
+		}(i)
 
 		workers = append(workers, worker) // add current worker to workers-array
 	}
@@ -76,6 +78,7 @@ func fanIn(workers []chan int) chan int {
 }
 
 func main() {
+	start := time.Now()
 	nums := genNums() // generate data to be acted on
 
 	numWorkers := 12
@@ -85,7 +88,9 @@ func main() {
 	processedNums := fanIn(workers) // collect processed data into single channel
 
 	// do something with processed data
-	for num := range processedNums {
-		log.Println(num)
+	for v := range processedNums {
+		v = v
 	}
+
+	log.Printf("finished in %v", time.Since(start))
 }
